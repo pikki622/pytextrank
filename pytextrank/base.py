@@ -140,7 +140,7 @@ A factory class that provides the document with its instance of
     _TOKEN_LOOKBACK: int = 3
 
 
-    def __init__ (
+    def __init__(
         self,
         *,
         edge_weight: float = _EDGE_WEIGHT,
@@ -170,16 +170,8 @@ optional dictionary of `lemma: [pos]` items to define the *stop words*, where ea
         self.edge_weight: float = edge_weight
         self.token_lookback: int = token_lookback
 
-        if pos_kept:
-            self.pos_kept: typing.List[str] = pos_kept
-        else:
-            self.pos_kept = self._POS_KEPT
-
-        if scrubber:
-            self.scrubber: typing.Callable = scrubber
-        else:
-            self.scrubber = default_scrubber
-
+        self.pos_kept = pos_kept if pos_kept else self._POS_KEPT
+        self.scrubber = scrubber if scrubber else default_scrubber
         if stopwords:
             self.stopwords: typing.Dict[str, typing.List[str]] = self._load_stopwords(stopwords)
         else:
@@ -187,7 +179,7 @@ optional dictionary of `lemma: [pos]` items to define the *stop words*, where ea
 
 
     @classmethod
-    def _load_stopwords (
+    def _load_stopwords(
         cls,
         stopwords: typing.Optional[StopWordsLike] = None,
         ) -> typing.Dict[str, typing.List[str]]:
@@ -209,16 +201,10 @@ the *stop words* dictionary
         if isinstance(stopwords, dict):
             return stopwords
 
-        if isinstance(stopwords, pathlib.Path):
-            path: pathlib.Path = stopwords
-        else:
-            path = pathlib.Path(str)  # type: ignore
-
+        path = stopwords if isinstance(stopwords, pathlib.Path) else pathlib.Path(str)
         if path.exists():
             with open(path, "r") as f:
-                data = json.load(f)
-
-                if data:
+                if data := json.load(f):
                     return data.items()
 
         raise TypeError("cannot parse the stopwords source as a dictionary")
@@ -420,7 +406,7 @@ a directed graph representing the lemma graph
         return g
 
 
-    def _keep_token (
+    def _keep_token(
         self,
         token: Token,
         ) -> bool:
@@ -447,7 +433,7 @@ boolean value for whether to keep this token as a node in the lemma graph
         key = Lemma(lemma, token.pos_,)
 
         if key not in self.seen_lemma:
-            self.seen_lemma[key] = set([token.i])
+            self.seen_lemma[key] = {token.i}
         else:
             self.seen_lemma[key].add(token.i)
 
@@ -596,7 +582,7 @@ normalized rank metric
         return phrase_rank * non_lemma_discount
 
 
-    def _get_min_phrases (
+    def _get_min_phrases(
         self,
         all_phrases: typing.Dict[Span, float]
         ) -> typing.List[Phrase]:
@@ -623,7 +609,7 @@ an ordered list of ranked phrases
             raise FutureWarning("Text-based scrubbers are deprecated. Use a `Span` instead.")
 
         keyfunc = lambda x: x[0]
-        applyfunc = lambda g: list((rank, spans) for text, rank, spans in g)
+        applyfunc = lambda g: [(rank, spans) for text, rank, spans in g]
 
         phrases: typing.List[typing.Tuple[str, typing.List[typing.Tuple[float, Span]]]] = groupby_apply(
             data,
@@ -633,10 +619,10 @@ an ordered list of ranked phrases
 
         phrase_list: typing.List[Phrase] = [
             Phrase(
-                text = p[0],
-                rank = max(rank for rank, span in p[1]),
-                count = len(p[1]),
-                chunks = list(span for rank, span in p[1]),
+                text=p[0],
+                rank=max(rank for rank, span in p[1]),
+                count=len(p[1]),
+                chunks=[span for rank, span in p[1]],
             )
             for p in phrases
         ]
@@ -644,7 +630,7 @@ an ordered list of ranked phrases
         return phrase_list
 
 
-    def get_unit_vector (
+    def get_unit_vector(
         self,
         limit_phrases: int,
         ) -> typing.List[VectorElem]:
@@ -677,14 +663,10 @@ the unit vector, as a list of `VectorElem` objects
 
         # normalize the phrase coordinates, such that the unit vector
         # has length = 1.0
-        sum_length = sum([ elem.coord for elem in unit_vector ])
+        sum_length = sum(elem.coord for elem in unit_vector)
 
         for elem in unit_vector:
-            if sum_length > 0.0:
-                elem.coord = elem.coord / sum_length
-            else:
-                elem.coord = 0.0
-
+            elem.coord = elem.coord / sum_length if sum_length > 0.0 else 0.0
         return unit_vector
 
 
@@ -792,7 +774,7 @@ a list of Paragraph data objects
         return para_list
 
 
-    def summary (
+    def summary(
         self,
         *,
         limit_phrases: int = 10,
@@ -823,26 +805,6 @@ texts for sentences, in order
         # build a list of sentence indices sorted by distance
         sent_dist: typing.List[Sentence] = self.calc_sent_dist(limit_phrases)
 
-        if level == "sentence":
-            top_sent_ids: typing.List[int] = [
-                sent.sent_id
-                for sent in sorted(sent_dist, key=lambda sent: sent.distance)
-                ]
-
-            # truncated to the specified limit
-            limit = min(limit_sentences, len(top_sent_ids))
-            top_sent_ids = top_sent_ids[:limit]
-
-            # optional: sort in ascending order of index to preserve
-            # the order in which sentences appear in the original text
-            if preserve_order:
-                top_sent_ids.sort()
-
-            # extract sentences with the least distance, up to the limit
-            # requested
-            for sent_id in top_sent_ids:
-                yield sent_dist[sent_id].text(self.doc)
-
         if level == "paragraph":
             top_sent_ids = [
                 sent_id
@@ -857,6 +819,26 @@ texts for sentences, in order
             # optional: sort in ascending order of index to preserve
             # the order in which the sentences appear in the original
             # text
+            if preserve_order:
+                top_sent_ids.sort()
+
+            # extract sentences with the least distance, up to the limit
+            # requested
+            for sent_id in top_sent_ids:
+                yield sent_dist[sent_id].text(self.doc)
+
+        elif level == "sentence":
+            top_sent_ids: typing.List[int] = [
+                sent.sent_id
+                for sent in sorted(sent_dist, key=lambda sent: sent.distance)
+                ]
+
+            # truncated to the specified limit
+            limit = min(limit_sentences, len(top_sent_ids))
+            top_sent_ids = top_sent_ids[:limit]
+
+            # optional: sort in ascending order of index to preserve
+            # the order in which sentences appear in the original text
             if preserve_order:
                 top_sent_ids.sort()
 
@@ -896,7 +878,7 @@ path for the output file; defaults to `"graph.dot"`
             f.write(dot.source)
 
 
-    def plot_keyphrases (
+    def plot_keyphrases(
         self
         ) -> typing.Any:
         """
@@ -913,11 +895,14 @@ the `altair` chart being rendered
 
         source = pd.DataFrame([p.__dict__ for p in self.doc._.phrases]).drop("chunks", axis=1).reset_index()
 
-        c = (
+        return (
             alt.Chart(source)
             .mark_bar()
-            .encode(x="index", y="rank", color="count", tooltip=["text", "rank", "count"])
+            .encode(
+                x="index",
+                y="rank",
+                color="count",
+                tooltip=["text", "rank", "count"],
+            )
             .properties(title="Keyphrase profile of the document")
         )
-
-        return c

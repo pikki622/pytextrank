@@ -49,7 +49,7 @@ def split_grafs (lines):
         yield "\n".join(graf)
 
 
-def filter_quotes (text, is_email=True):
+def filter_quotes(text, is_email=True):
     """
     filter the quoted text out of a message
     """
@@ -70,10 +70,7 @@ def filter_quotes (text, is_email=True):
         if m and len(m) > 1:
             text = m[0]
 
-        # strip off any trailing unsubscription notice
-        m = PAT_UNSUBSC.split(text, re.M)
-
-        if m:
+        if m := PAT_UNSUBSC.split(text, re.M):
             text = m[0]
 
     # replace any remaining quoted text with blank lines
@@ -274,21 +271,21 @@ class TextRank:
             pass
 
 
-    def increment_edge (self, node0, node1):
+    def increment_edge(self, node0, node1):
         """
         increment the weight for an edge between the two given nodes,
         creating the edge first if needed
         """
         if self.logger:
-            self.logger.debug("link {} {}".format(node0, node1))
-    
+            self.logger.debug(f"link {node0} {node1}")
+
         if self.lemma_graph.has_edge(node0, node1):
             self.lemma_graph[node0][node1]["weight"] += self.edge_weight
         else:
             self.lemma_graph.add_edge(node0, node1, weight=self.edge_weight)
 
 
-    def link_sentence (self, sent):
+    def link_sentence(self, sent):
         """
         link nodes and edges into the lemma graph for one parsed sentence
         """
@@ -309,44 +306,40 @@ class TextRank:
                 key = (token.lemma_, token.pos_,)
 
                 if key not in self.seen_lemma:
-                    self.seen_lemma[key] = set([token.i])
+                    self.seen_lemma[key] = {token.i}
                 else:
                     self.seen_lemma[key].add(token.i)
 
                 node_id = list(self.seen_lemma.keys()).index(key)
 
-                if not node_id in self.lemma_graph:
+                if node_id not in self.lemma_graph:
                     self.lemma_graph.add_node(node_id)
 
                 if self.logger:
-                    self.logger.debug("visit {} {}".format(
-                        visited_tokens, visited_nodes
-                    ))
-                    self.logger.debug("range {}".format(
-                        list(range(len(visited_tokens) - 1, -1, -1))
-                    ))
-            
+                    self.logger.debug(f"visit {visited_tokens} {visited_nodes}")
+                    self.logger.debug(f"range {list(range(len(visited_tokens) - 1, -1, -1))}")
+
                 for prev_token in range(len(visited_tokens) - 1, -1, -1):
                     if self.logger:
-                        self.logger.debug("prev_tok {} {}".format(
-                            prev_token, (token.i - visited_tokens[prev_token])
-                        ))
-                
+                        self.logger.debug(
+                            f"prev_tok {prev_token} {token.i - visited_tokens[prev_token]}"
+                        )
+
                     if (token.i - visited_tokens[prev_token]) <= self.token_lookback:
                         self.increment_edge(node_id, visited_nodes[prev_token])
                     else:
                         break
 
                 if self.logger:
-                    self.logger.debug(" -- {} {} {} {} {} {}".format(
-                        token.i, token.text, token.lemma_, token.pos_, visited_tokens, visited_nodes
-                    ))
+                    self.logger.debug(
+                        f" -- {token.i} {token.text} {token.lemma_} {token.pos_} {visited_tokens} {visited_nodes}"
+                    )
 
                 visited_tokens.append(token.i)
                 visited_nodes.append(node_id)
 
 
-    def collect_phrases (self, chunk):
+    def collect_phrases(self, chunk):
         """
         collect instances of phrases from the lemma graph
         based on the given chunk
@@ -357,20 +350,18 @@ class TextRank:
         for i in phrase.range():
             token = self.doc[i]
             key = (token.lemma_, token.pos_)
-        
+
             if key in self.seen_lemma:
                 node_id = list(self.seen_lemma.keys()).index(key)
                 rank = self.ranks[node_id]
                 phrase.sq_sum_rank += rank
                 compound_key.add(key)
-        
+
                 if self.logger:
-                    self.logger.debug(" {} {} {} {}".format(
-                        token.lemma_, token.pos_, node_id, rank
-                    ))
+                    self.logger.debug(f" {token.lemma_} {token.pos_} {node_id} {rank}")
             else:
                 phrase.non_lemma += 1
-    
+
         phrase.set_key(compound_key)
         phrase.calc_rank()
 
@@ -472,7 +463,7 @@ class TextRank:
             f.write(dot.source)
 
 
-    def summary (self, limit_phrases=10, limit_sentences=4, preserve_order=False, module="sentence"):
+    def summary(self, limit_phrases=10, limit_sentences=4, preserve_order=False, module="sentence"):
         """
         run extractive summarization, based on vector distance 
         per sentence from the top-ranked phrases,
@@ -494,19 +485,15 @@ class TextRank:
             unit_vector.append(p.rank)
 
             if self.logger:
-                self.logger.debug(
-                    "{} {} {}".format(phrase_id, p.text, p.rank)
-                )
-    
+                self.logger.debug(f"{phrase_id} {p.text} {p.rank}")
+
             for chunk in p.chunks:
                 for sent_start, sent_end, sent_vector in sent_bounds:
                     if chunk.start >= sent_start and chunk.start <= sent_end:
                         sent_vector.add(phrase_id)
 
                         if self.logger:
-                            self.logger.debug(
-                                " {} {} {} {}".format(sent_start, chunk.start, chunk.end, sent_end)
-                                )
+                            self.logger.debug(f" {sent_start} {chunk.start} {chunk.end} {sent_end}")
 
                         break
 
@@ -529,28 +516,16 @@ class TextRank:
         # distance from the unit vector
 
         sent_rank = {}
-        sent_id = 0
-
-        for sent_start, sent_end, sent_vector in sent_bounds:
+        for sent_id, (sent_start, sent_end, sent_vector) in enumerate(sent_bounds):
             sum_sq = 0.0
-    
+
             for phrase_id in range(len(unit_vector)):
                 if phrase_id not in sent_vector:
                     sum_sq += unit_vector[phrase_id]**2.0
 
             sent_rank[sent_id] = sqrt(sum_sq)
-            sent_id += 1
-
         if module == "sentence":
-            # extract the sentences with the lowest distance
-
-            sent_text = {}
-            sent_id = 0
-
-            for sent in self.doc.sents:
-                sent_text[sent_id] = sent
-                sent_id += 1
-
+            sent_text = dict(enumerate(self.doc.sents))
             # build a list of sentence indices, sorted according to their
             # corresponding rank
             top_sent_ids = list(range(len(sent_rank)))

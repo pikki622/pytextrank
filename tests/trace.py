@@ -6,6 +6,7 @@
 A simple stub to generate the expected "trace" used in unit tests.
 """
 
+
 import sys  # pylint: disable=W0611
 
 from icecream import ic  # pylint: disable=E0401
@@ -26,10 +27,9 @@ with open("dat/lee.txt", "r") as f:
     tr = doc._.textrank
 
     TOP_K = 5
-    trace = []
-
-    for sent_dist in tr.calc_sent_dist(limit_phrases=10):
-        if not sent_dist.empty():
-            trace.append([ sent_dist.sent_id, list(sent_dist.phrases) ])
-
+    trace = [
+        [sent_dist.sent_id, list(sent_dist.phrases)]
+        for sent_dist in tr.calc_sent_dist(limit_phrases=10)
+        if not sent_dist.empty()
+    ]
     ic(trace[:TOP_K])

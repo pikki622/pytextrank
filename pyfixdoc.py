@@ -42,7 +42,7 @@ See also:
     PAT_FWD_REF = re.compile(r"ForwardRef\('(.*)'\)")
 
 
-    def __init__ (
+    def __init__(
         self,
         module_name: str,
         git_url: str,
@@ -65,7 +65,7 @@ list of the classes to include in the apidocs
         self.class_list = class_list
 
         self.module_obj = sys.modules[self.module_name]
-        self.md: typing.List[str] = [ "# Reference: `{}` package".format(self.module_name) ]
+        self.md: typing.List[str] = [f"# Reference: `{self.module_name}` package"]
 
 
     def show_all_elements (
@@ -137,7 +137,7 @@ a dictionary of class objects which need apidocs generated
         return todo_list
 
 
-    def get_docstring (
+    def get_docstring(
         self,
         obj,
         parse=False,
@@ -162,9 +162,7 @@ list of lines of markdown
             arg_dict = {}
 
         local_md: typing.List[str] = []
-        raw_docstring = obj.__doc__
-
-        if raw_docstring:
+        if raw_docstring := obj.__doc__:
             docstring = inspect.cleandoc(raw_docstring)
 
             if parse:
@@ -177,7 +175,7 @@ list of lines of markdown
         return local_md
 
 
-    def parse_method_docstring (
+    def parse_method_docstring(
         self,
         docstring: str,
         arg_dict: dict,
@@ -197,23 +195,19 @@ parsed/fixed docstring, as markdown
         local_md: typing.List[str] = []
 
         for chunk in self.PAT_PARAM.split(docstring):
-            m_param = self.PAT_PARAM.match(chunk)
-
-            if m_param:
+            if m_param := self.PAT_PARAM.match(chunk):
                 param = m_param.group()
-                m_name = self.PAT_NAME.match(param)
-
-                if m_name:
+                if m_name := self.PAT_NAME.match(param):
                     name = m_name.group(1).strip()
                     anno = self.fix_fwd_refs(arg_dict[name])
                     descrip = m_name.group(2).strip()
 
                     if name == "returns":
-                        local_md.append("\n  * *{}* : `{}`  \n{}".format(name, anno, descrip))
+                        local_md.append(f"\n  * *{name}* : `{anno}`  \n{descrip}")
                     elif name == "yields":
-                        local_md.append("\n  * *{}* :  \n{}".format(name, descrip))
+                        local_md.append(f"\n  * *{name}* :  \n{descrip}")
                     else:
-                        local_md.append("\n  * `{}` : `{}`  \n{}".format(name, anno, descrip))
+                        local_md.append(f"\n  * `{name}` : `{anno}`  \n{descrip}")
             else:
                 chunk = chunk.strip()
 
@@ -223,7 +217,7 @@ parsed/fixed docstring, as markdown
         return "\n".join(local_md)
 
 
-    def fix_fwd_refs (
+    def fix_fwd_refs(
         self,
         anno: str,
         ) -> typing.Optional[str]:
@@ -241,14 +235,13 @@ fixed forward reference, as markdown; or `None` if no annotation is supplied
         if not anno:
             return None
         for term in anno.split(", "):
-            for chunk in self.PAT_FWD_REF.split(term):
-                if len(chunk) > 0:
-                    results.append(chunk)
-
+            results.extend(
+                chunk for chunk in self.PAT_FWD_REF.split(term) if len(chunk) > 0
+            )
         return ", ".join(results)
 
 
-    def document_method (
+    def document_method(
         self,
         path_list: list,
         name: str,
@@ -273,28 +266,25 @@ function kind
     returns:
 line number, plus apidocs for the method as a list of markdown lines
         """
-        local_md: typing.List[str] = ["---"]
-
         # format a header + anchor
         frag = ".".join(path_list + [ name ])
-        anchor = "#### [`{}` {}](#{})".format(name, func_kind, frag)
-        local_md.append(anchor)
-
+        anchor = f"#### [`{name}` {func_kind}](#{frag})"
+        local_md: typing.List[str] = ["---", anchor]
         # link to source code in Git repo
         code = obj.__code__
         line_num = code.co_firstlineno
         file = code.co_filename.replace(os.getcwd(), "")
 
-        src_url = "[*\[source\]*]({}{}#L{})\n".format(self.git_url, file, line_num)
+        src_url = f"[*\[source\]*]({self.git_url}{file}#L{line_num})\n"
         local_md.append(src_url)
 
         # format the callable signature
         sig = inspect.signature(obj)
         arg_list = self.get_arg_list(sig)
-        arg_list_str = "{}".format(", ".join([ a[0] for a in arg_list ]))
+        arg_list_str = f'{", ".join([a[0] for a in arg_list])}'
 
         local_md.append("```python")
-        local_md.append("{}({})".format(name, arg_list_str))
+        local_md.append(f"{name}({arg_list_str})")
         local_md.append("```")
 
         # include the docstring, with return annotation
@@ -305,9 +295,7 @@ line number, plus apidocs for the method as a list of markdown lines
 
         arg_dict["yields"] = None
 
-        ret = sig.return_annotation
-
-        if ret:
+        if ret := sig.return_annotation:
             arg_dict["returns"] = self.extract_type_annotation(ret)
 
         local_md.extend(self.get_docstring(obj, parse=True, arg_dict=arg_dict))
@@ -316,7 +304,7 @@ line number, plus apidocs for the method as a list of markdown lines
         return line_num, local_md
 
 
-    def get_arg_list (
+    def get_arg_list(
         self,
         sig: inspect.Signature,
         ) -> list:
@@ -334,13 +322,11 @@ argument list of `(arg_name, type_annotation)` pairs
         for param in sig.parameters.values():
             #ic(param.name, param.empty, param.default, param.annotation, param.kind)
 
-            if param.name == "self":
-                pass
-            else:
+            if param.name != "self":
                 if param.kind == inspect.Parameter.VAR_POSITIONAL:
-                    name = "*{}".format(param.name)
+                    name = f"*{param.name}"
                 elif param.kind == inspect.Parameter.VAR_KEYWORD:
-                    name = "**{}".format(param.name)
+                    name = f"**{param.name}"
                 elif param.default == inspect.Parameter.empty:
                     name = param.name
                 else:
@@ -349,7 +335,7 @@ argument list of `(arg_name, type_annotation)` pairs
                     else:
                         default_repr = param.default
 
-                    name = "{}={}".format(param.name, default_repr)
+                    name = f"{param.name}={default_repr}"
 
                 anno = self.extract_type_annotation(param.annotation)
                 arg_list.append((name, anno))
@@ -391,7 +377,7 @@ corrected type annotation
             return type_name
 
 
-    def document_type (
+    def document_type(
         self,
         path_list: list,
         name: str,
@@ -412,23 +398,20 @@ type object
     returns:
 apidocs for the type, as a list of lines of markdown
         """
-        local_md: typing.List[str] = []
-
         # format a header + anchor
         frag = ".".join(path_list + [ name ])
-        anchor = "#### [`{}` {}](#{})".format(name, "type", frag)
-        local_md.append(anchor)
-
-        # show type definition
-        local_md.append("```python")
-        local_md.append("{} = {}".format(name, obj))
-        local_md.append("```")
-        local_md.append("")
-
+        anchor = f"#### [`{name}` type](#{frag})"
+        local_md: typing.List[str] = [
+            anchor,
+            "```python",
+            f"{name} = {obj}",
+            "```",
+            "",
+        ]
         return local_md
 
 
-    def format_class (
+    def format_class(
         self,
         todo_list: typing.Dict[ str, typing.Any],
         class_name: str,
@@ -445,9 +428,7 @@ name of the class to document
         self.md.append("## [`{class_name}` class](#{class_name})".format(class_name=class_name))
 
         class_obj = todo_list[class_name]
-        docstring = class_obj.__doc__
-
-        if docstring:
+        if docstring := class_obj.__doc__:
             # add the raw docstring for a class
             self.md.append(docstring)
 
@@ -474,7 +455,7 @@ name of the class to document
             self.md.extend(obj_md)
 
 
-    def format_functions (
+    def format_functions(
         self
         ) -> None:
         """
@@ -482,7 +463,7 @@ Walk the module tree, and for each function definition format its
 apidocs as markdown.
         """
         self.md.append("---")
-        self.md.append("## [module functions](#{})".format(self.module_name))
+        self.md.append(f"## [module functions](#{self.module_name})")
 
         for func_name, func_obj in inspect.getmembers(self.module_obj, inspect.isfunction):
             if not func_name.startswith("_"):
@@ -490,7 +471,7 @@ apidocs as markdown.
                 self.md.extend(obj_md)
 
 
-    def format_types (
+    def format_types(
         self
         ) -> None:
         """
@@ -498,7 +479,7 @@ Walk the module tree, and for each type definition format its apidocs
 as markdown.
         """
         self.md.append("---")
-        self.md.append("## [module types](#{})".format(self.module_name))
+        self.md.append(f"## [module types](#{self.module_name})")
 
         for name, obj in inspect.getmembers(self.module_obj):
             if obj.__class__.__module__ == "typing":

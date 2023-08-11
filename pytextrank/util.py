@@ -62,7 +62,7 @@ scrubbed text
     return span.text.replace("'", "")
 
 
-def maniacal_scrubber (
+def maniacal_scrubber(
     span: Span
     ) -> str:
     """
@@ -92,9 +92,11 @@ scrubbed text
     x = x.replace("‘", "'").replace("’", "'").replace("`", "'")
     x = x.replace("…", "...").replace("–", "-")
 
-    x = str(unicodedata.normalize("NFKD", x).encode("ascii", "ignore").decode("utf-8"))
-
-    return x
+    return str(
+        unicodedata.normalize("NFKD", x)
+        .encode("ascii", "ignore")
+        .decode("utf-8")
+    )
 
 
 def split_grafs (
@@ -125,7 +127,7 @@ text per paragraph
         yield "\n".join(graf)
 
 
-def filter_quotes (
+def filter_quotes(
     text: str,
     *,
     is_email: bool = True,
@@ -163,10 +165,7 @@ the filtered text representing as a list of lines
         if m and len(m) > 1:
             text = m[0]
 
-        # strip off any trailing unsubscription notice
-        m = _PAT_UNSUBSC.split(text, re.M)
-
-        if m:
+        if m := _PAT_UNSUBSC.split(text, re.M):
             text = m[0]
 
     # replace any remaining quoted text with blank lines

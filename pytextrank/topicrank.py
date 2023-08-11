@@ -263,7 +263,7 @@ list of candidate spans
 
     @property  # type: ignore
     @lru_cache(maxsize=1)
-    def node_list (  # type: ignore
+    def node_list(  # type: ignore
         self
         ) -> typing.List[typing.Tuple[Span, ...]]:
         """
@@ -277,16 +277,11 @@ list of nodes
         # the *TopicRank* algorithm.
         candidates = self._get_candidates()
 
-        # Cluster candidates together using a simple set-based overlap of
-        # lemmas. Clustering can occur if the overlap is more than 25%.
-        # Map to a tuple so these clusters are hashable.
-        clustered = [tuple(cluster) for cluster in self._cluster(candidates)]
-
-        return clustered
+        return [tuple(cluster) for cluster in self._cluster(candidates)]
 
 
     @property
-    def edge_list (  # type: ignore
+    def edge_list(  # type: ignore
         self,
         ) -> typing.List[typing.Tuple[typing.List[Span], typing.List[Span], typing.Dict[str, float]]]:
         """
@@ -303,15 +298,18 @@ list of weighted edges
 
                 for source_member in source_topic:
                     for target_member in target_topic:
-                        distance = abs(source_member.start - target_member.start)
-
-                        if distance:
+                        if distance := abs(
+                            source_member.start - target_member.start
+                        ):
                             weight += 1.0 / distance
 
                 weight_dict = {"weight": weight * self.edge_weight}
-                weighted_edges.append((source_topic, target_topic, weight_dict))
-                weighted_edges.append((target_topic, source_topic, weight_dict))
-
+                weighted_edges.extend(
+                    (
+                        (source_topic, target_topic, weight_dict),
+                        (target_topic, source_topic, weight_dict),
+                    )
+                )
         return weighted_edges
 
 

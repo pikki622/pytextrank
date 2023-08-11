@@ -119,7 +119,7 @@ biased restart probabilities to use in the *PageRank* algorithm.
         return normalized_weighted_nodes
 
 
-    def change_focus (
+    def change_focus(
         self,
         focus: str = None,
         bias: float = _DEFAULT_BIAS,
@@ -143,11 +143,7 @@ optional bias for *node weight* values on tokens not found within the *focus set
 list of ranked phrases, in descending order
         """
         # update the focus parameters
-        if focus:
-            self.focus_tokens = set(focus.lower().split(" "))
-        else:
-            self.focus_tokens = set()
-
+        self.focus_tokens = set(focus.lower().split(" ")) if focus else set()
         self.node_bias = bias
         self.default_bias = default_bias
 

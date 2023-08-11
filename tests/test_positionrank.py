@@ -12,7 +12,7 @@ from pytextrank.base import BaseTextRankFactory  # pylint: disable=E0401
 from pytextrank.positionrank import PositionRankFactory  # pylint: disable=E0401
 
 
-def test_position_rank (doc: Doc):
+def test_position_rank(doc: Doc):
     """
 Ranks keywords that appear early in the document higher than TextRank
 does.
@@ -28,7 +28,7 @@ does.
     comparison_phrases = comparison_doc._.phrases
 
     # then
-    assert set(p.rank for p in phrases) != set(p.rank for p in comparison_phrases)
+    assert {p.rank for p in phrases} != {p.rank for p in comparison_phrases}
 
     # The test article mentions `Chelsea` at the beginning of the
     # article while it mentions `Shanghai Shenhua` anecdotally later

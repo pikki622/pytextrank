@@ -18,15 +18,11 @@ APP.config["SEND_FILE_MAX_AGE_DEFAULT"] = 3000
 
 
 @APP.route(DOCS_ROUTE, methods=["GET"])
-@APP.route(DOCS_ROUTE + "<path:path>", methods=["GET"], defaults={"path": None})
-@APP.route(DOCS_ROUTE + "<path:path>", methods=["GET"])
-def static_proxy (path=""):
+@APP.route(f"{DOCS_ROUTE}<path:path>", methods=["GET"], defaults={"path": None})
+@APP.route(f"{DOCS_ROUTE}<path:path>", methods=["GET"])
+def static_proxy(path=""):
     """Serve static files from the /site directory."""
-    if not path:
-        suffix = ""
-    else:
-        suffix = PurePosixPath(path).suffix
-
+    suffix = "" if not path else PurePosixPath(path).suffix
     if suffix not in [".css", ".js", ".map", ".png", ".svg", ".xml"]:
         path = os.path.join(path, "index.html")
 

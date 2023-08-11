@@ -11,15 +11,14 @@ from spacy.tokens import Doc  # pylint: disable=E0401
 
 
 @pytest.fixture(scope="module")
-def nlp () -> Language:
+def nlp() -> Language:
     """
 Language shared fixture.
     """
-    nlp = spacy.load("en_core_web_sm")  # pylint: disable=W0621
-    return nlp
+    return spacy.load("en_core_web_sm")
 
 
-def get_doc (nlp: Language, file_path: str) -> Doc:  # pylint: disable=W0621
+def get_doc(nlp: Language, file_path: str) -> Doc:    # pylint: disable=W0621
     """
 Doc shared fixture.
 
@@ -30,8 +29,7 @@ String specifying the path to the doc of interest.
 spaCy EN doc containing the data from ``file_path``.
     """
     text = pathlib.Path(file_path).read_text()
-    doc = nlp(text)  # pylint: disable=W0621
-    return doc
+    return nlp(text)
 
 
 @pytest.fixture(scope="module")
