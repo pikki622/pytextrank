@@ -13,7 +13,7 @@ sys.path.insert(0, "../pytextrank")
 from pytextrank.base import BaseTextRankFactory  # pylint: disable=E0401
 
 
-def test_base_text_rank (doc: Doc):
+def test_base_text_rank(doc: Doc):
     """
 Ranks unique keywords in a document correctly, sorted decreasing by
 centrality.
@@ -27,7 +27,7 @@ centrality.
 
     # then
     assert len(phrases) > 0
-    assert len(set(p.text for p in phrases)) == len(phrases)
+    assert len({p.text for p in phrases}) == len(phrases)
     assert phrases[0].rank == max(p.rank for p in phrases)
 
 

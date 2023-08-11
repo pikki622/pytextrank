@@ -13,7 +13,7 @@ sys.path.insert(0, "../pytextrank")
 from pytextrank.topicrank import TopicRankFactory  # pylint: disable=E0401
 
 
-def test_base_topic_rank (doc: Doc):
+def test_base_topic_rank(doc: Doc):
     """
 Ranks unique keywords in a document correctly, sorted decreasing by
 centrality.
@@ -27,7 +27,7 @@ centrality.
 
     # then
     assert len(phrases) > 0
-    assert len(set(p.text for p in phrases)) == len(phrases)
+    assert len({p.text for p in phrases}) == len(phrases)
     assert phrases[0].rank == max(p.rank for p in phrases)
 
 def test_add_pipe (nlp: Language):
@@ -184,7 +184,7 @@ Works as a pipeline component and can be disabled.
 
         assert "words" not in phrases
 
-def test_scrubber ():
+def test_scrubber():
     """
 Works as a pipeline component and can be disabled.
     """
@@ -208,10 +208,10 @@ Works as a pipeline component and can be disabled.
     def modify_scrubber():  # pylint: disable=W0612
         def scrubber_func(text_span: Span) -> str:
             print("scrubbed_func called")
-            if text_span.text == "scrubber":
-                return "modified scrubber"
-            return text_span.text
+            return "modified scrubber" if text_span.text == "scrubber" else text_span.text
+
         return scrubber_func
+
 
 
     # add "modify_scrubber" to config
